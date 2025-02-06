@@ -21,7 +21,6 @@ restaurants_table = dynamodb.Table("Restaurants-dev")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 📌 URL TripAdvisor pour les restaurants à Paris
 TRIPADVISOR_URL = "https://www.tripadvisor.com/Restaurants-g187147-Paris_Ile_de_France.html"
 
 def setup_driver():
@@ -30,14 +29,10 @@ def setup_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-
-    # Masquer Selenium
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-    # Désactiver `navigator.webdriver`
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
     return driver
@@ -47,10 +42,9 @@ def scrape_tripadvisor_restaurants():
 
     driver = setup_driver()
     driver.get(TRIPADVISOR_URL)
-    time.sleep(5)  # Attendre le chargement de la page
+    time.sleep(5)
 
     try:
-        # Attendre que les éléments des restaurants apparaissent
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'XIWnB z y')]"))
         )

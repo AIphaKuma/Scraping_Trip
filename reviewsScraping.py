@@ -13,12 +13,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from uuid import uuid4
 
-# 📌 Initialisation de DynamoDB
+#Initialisation de DynamoDB
 dynamodb = boto3.resource('dynamodb', region_name="eu-west-3")
 restaurants_table = dynamodb.Table("Restaurants-dev")
 reviews_table = dynamodb.Table("Reviews-dev")
 
-# 📌 Configuration des logs
+#Configuration des logs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -28,25 +28,19 @@ def setup_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    
-    # Masquer Selenium
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-    # Désactiver `navigator.webdriver`
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
     return driver
 
 def get_restaurants():
-    """Récupère les restaurants stockés dans DynamoDB"""
     response = restaurants_table.scan()
     return response.get("Items", [])
 
 def scrape_reviews_for_restaurant(restaurant):
-    """Scrape les avis d'un restaurant donné"""
     driver = setup_driver()
     restaurant_id = restaurant["restaurants_id"]
     restaurant_link = restaurant["link"]
@@ -54,10 +48,9 @@ def scrape_reviews_for_restaurant(restaurant):
     logger.info(f"🚀 Scraping des avis pour {restaurant['name']}...")
 
     driver.get(restaurant_link)
-    time.sleep(5)  # Attente du chargement
+    time.sleep(5)
 
     try:
-        # Attendre que les avis apparaissent
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, "//div[@data-automation='reviewCard']"))
         )
@@ -68,27 +61,24 @@ def scrape_reviews_for_restaurant(restaurant):
 
     reviews = []
     
-    review_elements = driver.find_elements(By.XPATH, "//div[@data-automation='reviewCard']")[:10]  # 🔥 Récupère 10 avis max
+    review_elements = driver.find_elements(By.XPATH, "//div[@data-automation='reviewCard']")[:10]
     logger.info(f"✅ {len(review_elements)} restaurants trouvés.")
 
     for review in review_elements:
         try:
             review_id = str(uuid4())
 
-            # 📌 Récupération du texte de l'avis
             try:
                 text = review.find_element(By.XPATH, ".//span[contains(@class, 'JguWG')]").text
             except:
                 text = "Pas de commentaire"
 
-            # 📌 Récupération de la note
             try:
                 rating_svg = review.find_element(By.XPATH, "//*[name()='svg']/*[name()='title']").text
-                rating = rating_svg.split(" ")[0]  # Extrait uniquement "4.5"
+                rating = rating_svg.split(" ")[0]
             except Exception as e:
                 rating = "Non noté"
                 logger.error(f"Erreur récupération note: {e}")
-
 
             try:
                 visit_type = review.find_element(By.XPATH, ".//span[contains(@class, 'DlAxN')]").text
@@ -96,7 +86,6 @@ def scrape_reviews_for_restaurant(restaurant):
                 visit_type = "Non spécifié"
                 logger.error(f"Erreur récupération type de visite: {e}")
 
-            # 📌 Stocker l'avis dans DynamoDB
             reviews_table.put_item(
                 Item={
                     "reviews_id": review_id,
@@ -122,7 +111,6 @@ def scrape_reviews_for_restaurant(restaurant):
     return reviews
 
 def scrape_tripadvisor_reviews():
-    """Lance le scraping des avis pour tous les restaurants enregistrés"""
     restaurants = get_restaurants()
     
     if not restaurants:

@@ -71,7 +71,6 @@ def analyze_reviews(restaurantId):
         wordcloud_url = generate_presigned_url(BUCKET_NAME, wordcloud_s3_path)
         sentiment_graph_url = generate_presigned_url(BUCKET_NAME, sentiment_s3_path)
 
-        # ✅ Mise à jour de la table Restaurants-dev avec les URLs générées
         table_restaurants.update_item(
             Key={"restaurants_id": restaurantId},
             UpdateExpression="SET wordcloud_url = :wc, sentiment_graph_url = :sg",
